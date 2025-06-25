@@ -1,1 +1,1 @@
-# Viral-Views
+# Viral-Views this is a social media platform designed for both livestreaming for creators, connecting with others, rap battles for artists, battles for likes and gifts, and also for short video uploads for entertainment and education purposes primarily, but with the freedom to post and be creative. 
