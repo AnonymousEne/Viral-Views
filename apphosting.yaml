@@ -1,3 +1,14 @@
+# Root directory for the app
+# See https://firebase.google.com/docs/app-hosting/configure#root-directory
+rootDirectory: .
+
+# Build configuration for Next.js
+# See https://firebase.google.com/docs/app-hosting/configure#build
+buildConfig:
+  commands:
+    - npm install
+    - npm run build
+
 # Settings for Backend (on Cloud Run).
 # See https://firebase.google.com/docs/app-hosting/configure#cloud-run
 runConfig:
