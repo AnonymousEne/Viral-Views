@@ -45,4 +45,4 @@ jobs:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_VIRAL_VIEWS }}'
           channelId: live # Deploy to the 'live' production channel
-          projectId: 'viral-views' # Replace with your actual Firebase Project ID
+          projectId: 'viralviews-m802a' # Replace with your actual Firebase Project ID
