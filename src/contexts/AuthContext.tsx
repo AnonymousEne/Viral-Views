@@ -57,7 +57,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         
         if (!userData) {
           // Create new user document if it doesn't exist
-          userData = await createUser({
+          await createUser({
             id: firebaseUser.uid,
             username: firebaseUser.email?.split('@')[0] || '',
             displayName: firebaseUser.displayName || '',
@@ -72,7 +72,9 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
               totalBattles: 0,
             },
             verified: false,
+            createdAt: new Date()
           })
+          userData = await getUserById(firebaseUser.uid)
         }
         
         setUser(userData)
@@ -120,6 +122,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           totalBattles: 0,
         },
         verified: false,
+        createdAt: new Date()
       })
     } catch (error) {
       setLoading(false)
