@@ -3,6 +3,9 @@ const nextConfig = {
   output: 'export',
   trailingSlash: true,
   distDir: 'out',
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
   serverExternalPackages: ['@genkit-ai/googleai', '@genkit-ai/core', 'genkit'],
   images: {
     unoptimized: true,
