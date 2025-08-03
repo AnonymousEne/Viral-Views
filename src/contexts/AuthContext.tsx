@@ -1,24 +1,45 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { 
-  User as FirebaseUser,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signOut,
-  updateProfile,
-  GoogleAuthProvider,
-  signInWithPopup,
-  TwitterAuthProvider
-} from 'firebase/auth'
-import { auth } from '@/lib/firebase'
-import { createUser, getUserById, updateUser } from '@/lib/firestore'
 import type { User } from '@/types/firebase'
+
+// Backend API client
+class ViralViewsAPIClient {
+  private baseUrl: string = ''
+
+  async call(endpoint: string, method = 'GET', body: any = null) {
+    try {
+      // Use the client-side API we deployed
+      if (typeof window !== 'undefined' && (window as any).ViralViewsAPI) {
+        return await (window as any).ViralViewsAPI.call(endpoint, method, body)
+      }
+      
+      // Fallback for server-side rendering
+      return {
+        success: false,
+        error: 'API not available'
+      }
+    } catch (error) {
+      return {
+        success: false,
+        error: (error as Error).message
+      }
+    }
+  }
+
+  async signIn(email: string, password: string) {
+    return this.call('auth/signin', 'POST', { email, password })
+  }
+
+  async signUp(email: string, password: string, displayName: string) {
+    return this.call('auth/signup', 'POST', { email, password, displayName })
+  }
+}
+
+const apiClient = new ViralViewsAPIClient()
 
 interface AuthContextType {
   user: User | null
-  firebaseUser: FirebaseUser | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<void>
   signUp: (email: string, password: string, displayName: string, username: string) => Promise<void>
@@ -43,142 +64,197 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
-  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(null)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setFirebaseUser(firebaseUser)
-      
-      if (firebaseUser) {
-        // Get or create user document
-        let userData = await getUserById(firebaseUser.uid)
-        
-        if (!userData) {
-          // Create new user document if it doesn't exist
-          userData = await createUser({
-            id: firebaseUser.uid,
-            username: firebaseUser.email?.split('@')[0] || '',
-            displayName: firebaseUser.displayName || '',
-            email: firebaseUser.email || '',
-            avatar: firebaseUser.photoURL || '',
-            followers: 0,
-            following: 0,
-            battleStats: {
-              wins: 0,
-              losses: 0,
-              draws: 0,
-              totalBattles: 0,
-            },
-            verified: false,
-          })
+    // Load user from localStorage on mount
+    const loadUser = () => {
+      try {
+        const savedUser = localStorage.getItem('viralviews_user')
+        if (savedUser) {
+          setUser(JSON.parse(savedUser))
         }
-        
-        setUser(userData)
-      } else {
-        setUser(null)
+      } catch (error) {
+        console.error('Failed to load user from storage:', error)
+      } finally {
+        setLoading(false)
       }
-      
-      setLoading(false)
-    })
+    }
 
-    return unsubscribe
+    loadUser()
   }, [])
 
   const signIn = async (email: string, password: string) => {
-    setLoading(true)
     try {
-      await signInWithEmailAndPassword(auth, email, password)
+      setLoading(true)
+      const result = await apiClient.signIn(email, password)
+      
+      if (result.success && result.user) {
+        const userData: User = {
+          id: result.user.id,
+          email: result.user.email,
+          displayName: result.user.name || result.user.email.split('@')[0],
+          username: result.user.name || result.user.email.split('@')[0],
+          avatar: '',
+          followers: 0,
+          following: 0,
+          battleStats: {
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            totalBattles: 0
+          },
+          createdAt: new Date(),
+          verified: false
+        }
+        
+        setUser(userData)
+        localStorage.setItem('viralviews_user', JSON.stringify(userData))
+      } else {
+        throw new Error(result.error || 'Sign in failed')
+      }
     } catch (error) {
-      setLoading(false)
+      console.error('Sign in error:', error)
       throw error
+    } finally {
+      setLoading(false)
     }
   }
 
   const signUp = async (email: string, password: string, displayName: string, username: string) => {
-    setLoading(true)
     try {
-      const { user: firebaseUser } = await createUserWithEmailAndPassword(auth, email, password)
+      setLoading(true)
+      const result = await apiClient.signUp(email, password, displayName)
       
-      // Update Firebase Auth profile
-      await updateProfile(firebaseUser, { displayName })
-      
-      // Create user document in Firestore
-      await createUser({
-        id: firebaseUser.uid,
-        username,
-        displayName,
-        email: firebaseUser.email || '',
-        avatar: firebaseUser.photoURL || '',
+      if (result.success && result.user) {
+        const userData: User = {
+          id: result.user.id,
+          email: result.user.email,
+          displayName: result.user.displayName || displayName,
+          username: username,
+          avatar: '',
+          followers: 0,
+          following: 0,
+          battleStats: {
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            totalBattles: 0
+          },
+          createdAt: new Date(),
+          verified: false
+        }
+        
+        setUser(userData)
+        localStorage.setItem('viralviews_user', JSON.stringify(userData))
+      } else {
+        throw new Error(result.error || 'Sign up failed')
+      }
+    } catch (error) {
+      console.error('Sign up error:', error)
+      throw error
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const signInWithGoogle = async () => {
+    try {
+      setLoading(true)
+      // Mock Google sign in for now
+      const mockUser: User = {
+        id: Date.now().toString(),
+        email: 'google@example.com',
+        displayName: 'Google User',
+        username: 'googleuser',
+        avatar: '',
         followers: 0,
         following: 0,
         battleStats: {
           wins: 0,
           losses: 0,
           draws: 0,
-          totalBattles: 0,
+          totalBattles: 0
         },
-        verified: false,
-      })
+        createdAt: new Date(),
+        verified: false
+      }
+      
+      setUser(mockUser)
+      localStorage.setItem('viralviews_user', JSON.stringify(mockUser))
     } catch (error) {
-      setLoading(false)
+      console.error('Google sign in error:', error)
       throw error
-    }
-  }
-
-  const signInWithGoogle = async () => {
-    setLoading(true)
-    try {
-      const provider = new GoogleAuthProvider()
-      await signInWithPopup(auth, provider)
-    } catch (error) {
+    } finally {
       setLoading(false)
-      throw error
     }
   }
 
   const signInWithTwitter = async () => {
-    setLoading(true)
     try {
-      const provider = new TwitterAuthProvider()
-      await signInWithPopup(auth, provider)
+      setLoading(true)
+      // Mock Twitter sign in for now
+      const mockUser: User = {
+        id: Date.now().toString(),
+        email: 'twitter@example.com',
+        displayName: 'Twitter User',
+        username: 'twitteruser',
+        avatar: '',
+        followers: 0,
+        following: 0,
+        battleStats: {
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          totalBattles: 0
+        },
+        createdAt: new Date(),
+        verified: false
+      }
+      
+      setUser(mockUser)
+      localStorage.setItem('viralviews_user', JSON.stringify(mockUser))
     } catch (error) {
-      setLoading(false)
+      console.error('Twitter sign in error:', error)
       throw error
+    } finally {
+      setLoading(false)
     }
   }
 
   const logout = async () => {
-    setLoading(true)
     try {
-      await signOut(auth)
+      setUser(null)
+      localStorage.removeItem('viralviews_user')
     } catch (error) {
-      setLoading(false)
+      console.error('Logout error:', error)
       throw error
     }
   }
 
   const updateUserProfile = async (updates: Partial<User>) => {
-    if (!user) throw new Error('No user logged in')
-    
-    // Update Firestore document
-    await updateUser(user.id, updates)
-    
-    // Update local state
-    setUser({ ...user, ...updates })
+    try {
+      if (!user) throw new Error('No user logged in')
+      
+      const updatedUser = { ...user, ...updates }
+      setUser(updatedUser)
+      localStorage.setItem('viralviews_user', JSON.stringify(updatedUser))
+    } catch (error) {
+      console.error('Update profile error:', error)
+      throw error
+    }
   }
 
   const value: AuthContextType = {
     user,
-    firebaseUser,
     loading,
     signIn,
     signUp,
     signInWithGoogle,
     signInWithTwitter,
     logout,
-    updateUserProfile,
+    updateUserProfile
   }
 
   return (
