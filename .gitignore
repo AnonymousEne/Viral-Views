@@ -77,3 +77,13 @@ temp/
 uploads/
 videos/
 thumbnails/
+
+#const firebaseConfig = {
+  apiKey: "AIzaSyAlkLFh7sURRxD2YsgOpSujv7dGYZNCT4I",
+  authDomain: "viralviews-m802a.firebaseapp.com",
+  projectId: "viralviews-m802a",
+  storageBucket: "viralviews-m802a.firebasestorage.app",
+  messagingSenderId: "431053619338",
+  appId: "1:431053619338:web:11b34d9d365ed172602d73",
+  measurementId: "G-044M10846B"
+}
